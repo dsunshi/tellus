@@ -1,16 +1,83 @@
 use create_vox::{Color, VoxFile, Voxel};
 use noise::{NoiseFn, OpenSimplex};
 use rand::prelude::*;
+use std::cmp::Ordering;
 
-struct Map {
+struct NoiseMap {
     width: u32,
     height: u32,
-    noise_map: Vec<Vec<f64>>,
+    map: Vec<Vec<f64>>,
     scale: f64,
     octaves: u32,
     persistance: f64,
     lacunarity: f64,
     offset: Vector2D,
+}
+
+struct MeshMap {
+    zscale: f64,
+    ground: u32,
+}
+
+impl MeshMap {
+    fn new(zscale: f64, ground: u32) -> Self {
+        MeshMap { zscale, ground }
+    }
+
+    // TODO: Why is the ground offset needed?
+    fn render(&self, vox: &mut VoxFile, color_map: &ColorMap, noise_map: &NoiseMap) {
+        for y in 0..noise_map.height {
+            for x in 0..noise_map.width {
+                let noise_height = noise_map.map[x as usize][y as usize];
+                let color_index = color_map.map[x as usize][y as usize];
+                let z = ((noise_height * self.zscale) as u32) + self.ground;
+                let voxel = Voxel::new(x as u8, y as u8, z as u8, color_index);
+                if z > self.ground {
+                    for zp in (self.ground..z).rev() {
+                        let voxel = Voxel::new(x as u8, y as u8, zp as u8, color_index);
+                        vox.models[0].add_voxel(voxel);
+                    }
+                }
+
+                vox.models[0].add_voxel(voxel);
+            }
+        }
+    }
+}
+
+struct Terrain {
+    name: String,
+    height: f64,
+    color_index: u8,
+}
+
+impl PartialOrd for Terrain {
+    // Tick should be sorted by the timestamp
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.height.partial_cmp(&other.height)
+    }
+}
+
+impl Ord for Terrain {
+    // Tick should be sorted by the timestamp
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.height.partial_cmp(&other.height).unwrap()
+    }
+}
+
+impl PartialEq for Terrain {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+    }
+}
+
+impl Eq for Terrain {}
+
+struct ColorMap {
+    width: u32,
+    height: u32,
+    colors: Vec<Terrain>,
+    map: Vec<Vec<u8>>,
 }
 
 struct Vector2D {
@@ -22,12 +89,42 @@ fn inverselerp(a: f64, b: f64, x: f64) -> f64 {
     (x - a) / (b - a)
 }
 
-impl Map {
+impl ColorMap {
     fn new(width: u32, height: u32) -> Self {
-        Map {
+        ColorMap {
             width,
             height,
-            noise_map: vec![vec![0.0; width as usize]; height as usize],
+            colors: Vec::new(),
+            map: vec![vec![0; width as usize]; height as usize],
+        }
+    }
+
+    fn add(&mut self, terrain: Terrain) {
+        self.colors.push(terrain);
+        self.colors.sort();
+    }
+
+    fn apply_noise_map(&mut self, noise_map: &NoiseMap) {
+        for y in 0..noise_map.height {
+            for x in 0..noise_map.width {
+                let noise_height = noise_map.map[x as usize][y as usize];
+                for color in &self.colors {
+                    if noise_height < color.height {
+                        self.map[x as usize][y as usize] = color.color_index;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl NoiseMap {
+    fn new(width: u32, height: u32) -> Self {
+        NoiseMap {
+            width,
+            height,
+            map: vec![vec![0.0; width as usize]; height as usize],
             scale: 0.0001,
             octaves: 0,
             persistance: 0.0001,
@@ -114,51 +211,32 @@ impl Map {
                 } else if noise_height < min_noise_height {
                     min_noise_height = noise_height;
                 }
-                // TODO: How to handle z-scale?
-                self.noise_map[x as usize][y as usize] = noise_height * 20.0;
-                assert!(noise_height < 255.0);
+                self.map[x as usize][y as usize] = noise_height;
             }
         }
 
         // Normalize
         for y in 0..self.height {
             for x in 0..self.width {
-                self.noise_map[x as usize][y as usize] = inverselerp(
+                self.map[x as usize][y as usize] = inverselerp(
                     min_noise_height,
                     max_noise_height,
-                    self.noise_map[x as usize][y as usize],
+                    self.map[x as usize][y as usize],
                 );
-                assert!(self.noise_map[x as usize][y as usize] < 255.0);
             }
         }
 
         Ok(self)
     }
 
-    // TODO: Why is the ground offset needed?
-    fn fill(&self, vox: &mut VoxFile, ground: u32) {
-        for y in 0..self.height {
-            for x in 0..self.width {
-                let z = (self.noise_map[x as usize][y as usize] as u32) + ground;
-                let voxel = Voxel::new(x as u8, y as u8, z as u8, 1);
-                if z > ground {
-                    for zp in (ground..z).rev() {
-                        let voxel = Voxel::new(x as u8, y as u8, zp as u8, 1);
-                        vox.models[0].add_voxel(voxel);
-                    }
-                }
-
-                vox.models[0].add_voxel(voxel);
-            }
-        }
-    }
-
     // fn draw_noise_map(self) {}
 }
 
 fn main() {
-    let mut vox = VoxFile::new(100, 100, 40);
-    let map = Map::new(100, 100)
+    let width = 100;
+    let height = 100;
+    let mut vox = VoxFile::new(width, height, 40);
+    let noise_map = NoiseMap::new(width.into(), height.into())
         .scale(27.3)
         .octaves(4)
         .persistance(0.5)
@@ -166,8 +244,48 @@ fn main() {
         .offset(0, 0)
         .build()
         .expect("WTF");
+    let mut color_map = ColorMap::new(width.into(), height.into());
+    let mesh_map = MeshMap::new(15.0, 20);
+
+    // colors
+    // water - rgb(0, 121, 150)
+    vox.set_palette_color(2, 0, 121, 150, 255);
+    let water = Terrain {
+        name: "water".to_string(),
+        height: 0.25,
+        color_index: 2,
+    };
+    color_map.add(water);
+    // dirt - rgb(129, 108, 91)
     vox.set_palette_color(1, 129, 108, 91, 255);
-    map.fill(&mut vox, 20);
+    let dirt = Terrain {
+        name: "dirt".to_string(),
+        height: 0.4,
+        color_index: 1,
+    };
+    color_map.add(dirt);
+    // grass - rgb(102, 141, 60)
+    vox.set_palette_color(3, 102, 141, 60, 255);
+    let grass = Terrain {
+        name: "grass".to_string(),
+        height: 0.7,
+        color_index: 3,
+    };
+    color_map.add(grass);
+    // snow  - rgb(231, 227, 215)
+    vox.set_palette_color(4, 231, 227, 215, 255);
+    let snow = Terrain {
+        name: "snow".to_string(),
+        height: 1.6,
+        color_index: 4,
+    };
+    color_map.add(snow);
+
+    // Map the colors to the noise
+    color_map.apply_noise_map(&noise_map);
+
+    mesh_map.render(&mut vox, &color_map, &noise_map);
+    // noise_map.fill(&mut vox, 20);
     // for x in 0..100 {
     //     for y in 0..100 {
     //         let z = (map.noise_map[x][y] + 20.0) as u32;

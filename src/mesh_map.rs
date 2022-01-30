@@ -12,13 +12,14 @@ pub struct MeshMap<'a> {
 
 // Simple activation function
 // Examples: https://github.com/sjeohp/activation/blob/master/src/lib.rs
-fn height_curve(x: f64) -> f64 {
-    let c = 4.5;
-    // if x < 0.23 {
-    //     return 0.23;
-    // }
-
-    (1.1 + ((x - 1.0) * c).exp()).ln()
+fn height_curve(mut x: f64) -> f64 {
+    // This is the color from level / zscale
+    let water_line = 6.0 / 50.0;
+    x = (x * 1.5).tanh();
+    if x < water_line {
+        x = water_line;
+    }
+    x
 }
 
 impl<'a> MeshMap<'a> {

@@ -19,6 +19,10 @@ fn inverselerp(a: f64, b: f64, x: f64) -> f64 {
     (x - a) / (b - a)
 }
 
+fn rescale(x: f64, a: f64, b: f64, min: f64, max: f64) -> f64 {
+    ((b - a) * (x - min)) / (max - min) + a
+}
+
 impl NoiseMap {
     pub fn new(width: u32, height: u32) -> Self {
         NoiseMap {
@@ -124,6 +128,7 @@ impl NoiseMap {
                 } else if noise_height < min_noise_height {
                     min_noise_height = noise_height;
                 }
+                noise_height = rescale(noise_height, 0.0, 1.0, min_noise_height, max_noise_height);
                 self.map[x as usize][y as usize] = noise_height;
             }
         }

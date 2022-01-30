@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 create_vox = "1.0.0"
 noise = "0.7.0"
+rand = "0.8.4"

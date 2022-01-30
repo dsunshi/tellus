@@ -17,12 +17,13 @@ fn main() {
         .build()
         .expect("All inputs are in a valid range!");
     let mut color_map = ColorMap::new(width.into(), height.into());
-    let mesh_map = MeshMap::new(15.0, 20);
+    let mesh_map = MeshMap::new(16.0, 20);
 
     // colors
     // water - rgb(0, 121, 150)
+    // TODO: There needs to be a better way to specify colors
     vox.set_palette_color(2, 0, 121, 150, 255);
-    let water = Terrain::new("water", 0.25, 2);
+    let water = Terrain::new("water", 0.23, 2);
     color_map.add(water);
     // dirt - rgb(129, 108, 91)
     vox.set_palette_color(1, 129, 108, 91, 255);
@@ -30,7 +31,7 @@ fn main() {
     color_map.add(dirt);
     // grass - rgb(102, 141, 60)
     vox.set_palette_color(3, 102, 141, 60, 255);
-    let grass = Terrain::new("grass", 0.7, 3);
+    let grass = Terrain::new("grass", 0.8, 3);
     color_map.add(grass);
     // snow  - rgb(231, 227, 215)
     vox.set_palette_color(4, 231, 227, 215, 255);

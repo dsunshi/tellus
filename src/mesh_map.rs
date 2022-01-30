@@ -7,6 +7,17 @@ pub struct MeshMap {
     ground: u32,
 }
 
+// Simple activation function
+// Examples: https://github.com/sjeohp/activation/blob/master/src/lib.rs
+fn height_curve(x: f64) -> f64 {
+    let c = 3.5;
+    if x < 0.23 {
+        return 0.12;
+    }
+
+    (1.0 + ((x - 1.0) * c).exp()).ln()
+}
+
 impl MeshMap {
     pub fn new(zscale: f64, ground: u32) -> Self {
         MeshMap { zscale, ground }
@@ -16,7 +27,11 @@ impl MeshMap {
     pub fn render(&self, vox: &mut VoxFile, color_map: &ColorMap, noise_map: &NoiseMap) {
         for y in 0..noise_map.height {
             for x in 0..noise_map.width {
+                // Get the noise height from the noise map
                 let noise_height = noise_map.map[x as usize][y as usize];
+                // Apply the activation function
+                // TODO: How to specify this as closure?
+                let noise_height = height_curve(noise_height);
                 let color_index = color_map.map[x as usize][y as usize];
                 let z = ((noise_height * self.zscale) as u32) + self.ground;
                 let voxel = Voxel::new(x as u8, y as u8, z as u8, color_index);

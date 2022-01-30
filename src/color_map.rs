@@ -1,50 +1,41 @@
-use crate::noise_map::NoiseMap;
-use std::cmp::Ordering;
-
 pub struct Terrain {
-    name: String,
-    height: f64,
+    #[allow(dead_code)]
+    name: String, // TODO: is there a use case?
     color_index: u8,
+    start_level: u8,
+    end_level: u8,
 }
 
 pub struct ColorMap {
     pub width: u32,
     pub height: u32,
     colors: Vec<Terrain>,
-    pub map: Vec<Vec<u8>>,
+    // pub map: Vec<Vec<u8>>,
 }
 
 impl Terrain {
-    pub fn new(name: &str, height: f64, color_index: u8) -> Self {
+    pub fn new(name: &str, color_index: u8) -> Self {
         Terrain {
             name: name.to_string(),
-            height,
+            start_level: 0,
+            end_level: 0,
             color_index,
         }
     }
-}
 
-impl PartialOrd for Terrain {
-    // Tick should be sorted by the timestamp
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.height.partial_cmp(&other.height)
+    pub fn from_levels(mut self, start: u8, end: u8) -> Self {
+        self.start_level = start;
+        self.end_level = end;
+        self
+    }
+
+    pub fn is_terrain(&self, height: u8) -> bool {
+        if height >= self.start_level && height <= self.end_level {
+            return true;
+        }
+        false
     }
 }
-
-impl Ord for Terrain {
-    // Tick should be sorted by the timestamp
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.height.partial_cmp(&other.height).unwrap()
-    }
-}
-
-impl PartialEq for Terrain {
-    fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
-    }
-}
-
-impl Eq for Terrain {}
 
 impl ColorMap {
     pub fn new(width: u32, height: u32) -> Self {
@@ -52,35 +43,20 @@ impl ColorMap {
             width,
             height,
             colors: Vec::new(),
-            map: vec![vec![0; width as usize]; height as usize],
+            // map: vec![vec![0; width as usize]; height as usize],
         }
     }
 
     pub fn add(&mut self, terrain: Terrain) {
         self.colors.push(terrain);
-        self.colors.sort();
     }
 
-    pub fn apply_noise_map(&mut self, noise_map: &NoiseMap) {
-        for y in 0..noise_map.height {
-            for x in 0..noise_map.width {
-                let noise_height = noise_map.map[x as usize][y as usize];
-                for color in &self.colors {
-                    if noise_height < color.height {
-                        self.map[x as usize][y as usize] = color.color_index;
-                        break;
-                    }
-                }
-                // TODO: This should maybe return a result ...
-                if self.map[x as usize][y as usize] == 0 {
-                    println!(
-                        "Failed to assign a color at height: {}",
-                        noise_map.map[x as usize][y as usize]
-                    );
-                }
-
-                assert!(self.map[x as usize][y as usize] > 0);
+    pub fn get_terrain_color(&self, height: u8) -> Option<u8> {
+        for color in self.colors.iter() {
+            if color.is_terrain(height) {
+                return Some(color.color_index);
             }
         }
+        None
     }
 }

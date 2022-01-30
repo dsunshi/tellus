@@ -5,43 +5,55 @@ use tellus::mesh_map::MeshMap;
 use tellus::noise_map::NoiseMap;
 
 fn main() {
+    // Dimensions for the Voxel file
     let width = 100;
     let height = 100;
     let mut vox = VoxFile::new(width, height, 40);
+
+    // Define the noise map
     let noise_map = NoiseMap::new(width.into(), height.into())
-        .scale(27.3)
+        .scale(20.3)
         .octaves(4)
         .persistance(0.5)
         .lacunarity(2.0)
         .offset(0, 0)
         .build()
         .expect("All inputs are in a valid range!");
-    let mut color_map = ColorMap::new(width.into(), height.into());
-    let mesh_map = MeshMap::new(16.0, 20);
 
-    // colors
-    // water - rgb(0, 121, 150)
+    // Define the color map
     // TODO: There needs to be a better way to specify colors
-    vox.set_palette_color(2, 0, 121, 150, 255);
-    let water = Terrain::new("water", 0.23, 2);
+    let mut color_map = ColorMap::new(width.into(), height.into());
+    // water - rgb(91, 118, 147)
+    vox.set_palette_color(1, 91, 118, 147, 255);
+    let water = Terrain::new("water", 1).from_levels(0, 2);
     color_map.add(water);
-    // dirt - rgb(129, 108, 91)
-    vox.set_palette_color(1, 129, 108, 91, 255);
-    let dirt = Terrain::new("dirt", 0.4, 1);
+    // dirt - rgb(199, 191, 168)
+    vox.set_palette_color(2, 199, 191, 168, 255);
+    let dirt = Terrain::new("dirt", 2).from_levels(3, 3);
     color_map.add(dirt);
-    // grass - rgb(102, 141, 60)
-    vox.set_palette_color(3, 102, 141, 60, 255);
-    let grass = Terrain::new("grass", 0.8, 3);
+    // grass - rgb(83, 96, 66)
+    vox.set_palette_color(3, 83, 96, 66, 255);
+    let grass = Terrain::new("grass", 3).from_levels(4, 8);
     color_map.add(grass);
-    // snow  - rgb(231, 227, 215)
-    vox.set_palette_color(4, 231, 227, 215, 255);
-    let snow = Terrain::new("snow", 1.6, 4);
+    // snow  - rgb(217, 213, 221)
+    vox.set_palette_color(4, 217, 213, 221, 255);
+    let snow = Terrain::new("snow", 4).from_levels(9, 15);
     color_map.add(snow);
 
-    // Map the colors to the noise
-    color_map.apply_noise_map(&noise_map);
+    // Generate the "mesh"
+    let mesh_map = MeshMap::new(width.into(), height.into())
+        .zscale(20.0)
+        .ground(20)
+        .color(&color_map)
+        .noise(&noise_map)
+        .build()
+        .expect("All inputs are in a valid range!");
 
-    mesh_map.render(&mut vox, &color_map, &noise_map);
+    // Render the "mesh" to the VoxFile
+    if let Err(e) = mesh_map.render(&mut vox) {
+        panic!("Render error: {:?}", e);
+    }
 
+    // Save the output to file
     vox.save("tellus.vox");
 }

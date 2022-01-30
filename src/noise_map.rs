@@ -87,11 +87,11 @@ impl NoiseMap {
                 let mut noise_height = 1.0;
                 for i in 0..self.octaves {
                     // Scaled x, y using:
-                    // scaled x = x / scale * frequency + octave offset
-                    let sx = ((x as f64) / self.scale) * frequency
-                        + (octave_offsets[i as usize].x as f64);
-                    let sy = ((y as f64) / self.scale) * frequency
-                        + (octave_offsets[i as usize].y as f64);
+                    // scaled x = ((x + octave offset) / scale) * frequency
+                    let sx = (((x as i32) + octave_offsets[i as usize].x) as f64) / self.scale
+                        * frequency;
+                    let sy = (((y as i32) + octave_offsets[i as usize].y) as f64) / self.scale
+                        * frequency;
 
                     // Generate the noise based on the scaled x, y above
                     let sz = noise.get([sx, sy]);

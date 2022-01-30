@@ -6,10 +6,11 @@
 [![Rust](https://img.shields.io/badge/-rust-red?style=for-the-badge&logo=rust)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-informational?style=flat-square)](COPYRIGHT.md)
 [![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
-</div>
 
 ![Tellus](tellus.png)
--- image Generated using Tellus and MagicaVoxel
+<br />
+Image generated using Tellus and MagicaVoxel
+</div>
 
 ## Work in Progress
 This is still under **heavy** development. Meaning everything or anything can

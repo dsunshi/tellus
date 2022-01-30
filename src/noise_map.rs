@@ -1,6 +1,7 @@
 use crate::Vector2D;
-use noise::{NoiseFn, OpenSimplex};
+use noise::{NoiseFn, OpenSimplex, Seedable};
 use rand::prelude::*;
+use rand_pcg::Pcg64;
 
 pub struct NoiseMap {
     pub width: u32,
@@ -11,6 +12,7 @@ pub struct NoiseMap {
     persistance: f64,
     lacunarity: f64,
     offset: Vector2D,
+    seed: Option<u32>,
 }
 
 fn inverselerp(a: f64, b: f64, x: f64) -> f64 {
@@ -24,11 +26,17 @@ impl NoiseMap {
             height,
             map: vec![vec![0.0; width as usize]; height as usize],
             scale: 0.0001,
-            octaves: 0,
-            persistance: 0.0001,
-            lacunarity: 0.0001,
+            octaves: 4,
+            persistance: 0.5,
+            lacunarity: 2.0,
             offset: Vector2D { x: 0, y: 0 },
+            seed: None,
         }
+    }
+
+    pub fn seed(mut self, seed: u32) -> Self {
+        self.seed = Some(seed);
+        self
     }
 
     pub fn scale(mut self, scale: f64) -> Self {
@@ -57,8 +65,15 @@ impl NoiseMap {
     }
 
     pub fn build(mut self) -> Result<Self, String> {
+        let seed = if let Some(s) = self.seed {
+            s
+        } else {
+            let mut rng = rand::thread_rng();
+            rng.gen::<u32>()
+        };
+
         // Generate a 2D vector the size of width and height
-        let noise = OpenSimplex::new();
+        let noise = OpenSimplex::new().set_seed(seed);
 
         // Check the inputs
         if self.scale <= 0.0 {
@@ -66,7 +81,7 @@ impl NoiseMap {
         }
 
         // Generate random offsets for each octave
-        let mut rng = thread_rng();
+        let mut rng = Pcg64::seed_from_u64(seed as u64);
         let mut octave_offsets: Vec<Vector2D> = Vec::new();
         for _i in 0..self.octaves {
             let x_offset = rng.gen_range(-100000..100000) + self.offset.x;

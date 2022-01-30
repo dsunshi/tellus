@@ -17,6 +17,7 @@ fn main() {
         .persistance(0.5)
         .lacunarity(2.0)
         .offset(0, 0)
+        .seed(0x6576616E)
         .build()
         .expect("All inputs are in a valid range!");
 
